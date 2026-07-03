@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 """
-╔══════════════════════════════════════════════════════════════╗
-║  9Router × Antigravity — Batch OAuth Connector               ║
-║  Auto-link Google accounts to 9Router Antigravity provider   ║
-║  Engine: DrissionPage (CDP-native, zero WebDriver footprint) ║
-╚══════════════════════════════════════════════════════════════╝
+9Router Antigravity Bot
+Batch OAuth connector for 9Router Antigravity provider.
+Uses DrissionPage (CDP, no WebDriver).
 """
 
-# ── Bootstrap: auto-install DrissionPage if missing ──────────
+# Bootstrap: auto-install DrissionPage if missing
 import os, sys, subprocess, tempfile, shutil, random, time, argparse
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -22,7 +20,7 @@ def _bootstrap():
     except ImportError:
         pass
 
-    print("\n  ⏳  DrissionPage not found — installing automatically...\n")
+    print("\n  DrissionPage not found - installing automatically...\n")
 
     # Try direct pip first
     try:
@@ -35,11 +33,11 @@ def _bootstrap():
         pass
 
     # Fallback: create venv
-    print("  ℹ  System pip blocked — creating virtual environment...")
+    print("  System pip blocked - creating virtual environment...")
     try:
         subprocess.check_call([sys.executable, "-m", "venv", VENV_DIR])
     except subprocess.CalledProcessError:
-        print("  ✗  Failed to create venv. Run: sudo apt install python3-venv")
+        print("  [ERROR] Failed to create venv. Run: sudo apt install python3-venv")
         sys.exit(1)
 
     venv_py = os.path.join(
@@ -48,7 +46,7 @@ def _bootstrap():
     )
     subprocess.check_call([venv_py, "-m", "pip", "install", "-q", "--upgrade", "pip"])
     subprocess.check_call([venv_py, "-m", "pip", "install", "DrissionPage"])
-    print("  ✓  Installed in venv — restarting...\n")
+    print("  [OK] Installed in venv - restarting...\n")
     os.execv(venv_py, [venv_py] + sys.argv)
 
 
@@ -57,12 +55,12 @@ _bootstrap()
 from DrissionPage import ChromiumPage, ChromiumOptions  # noqa: E402
 from DrissionPage._units.actions import Keys             # noqa: E402
 
-# ── Configuration ────────────────────────────────────────────
+# Configuration
 ROUTER_URL = "http://localhost:20128/dashboard/providers/antigravity"
 DEFAULT_ACCOUNTS_FILE = os.path.join(SCRIPT_DIR, "accounts.txt")
 DEFAULT_DELAY = 3
 
-# ── Timing profiles ─────────────────────────────────────────
+# Timing profiles
 PROFILES = {
     "fast": {
         "page_load": 1, "after_add": 1, "after_confirm": 0.5,
@@ -84,7 +82,7 @@ PROFILES = {
     },
 }
 
-# ── ANSI color helpers ──────────────────────────────────────
+# ANSI color helpers
 class C:
     RESET   = "\033[0m"
     BOLD    = "\033[1m"
@@ -101,28 +99,15 @@ class C:
     BG_CYAN   = "\033[46m"
 
 
-# ── Pretty output helpers ───────────────────────────────────
+# Pretty output helpers
 def banner():
-    art = f"""{C.CYAN}{C.BOLD}
-    ┌─────────────────────────────────────────────────────────┐
-    │   ____  ____              _                             │
-    │  / __ \\/ __ \\____  __  __/ /____  _____                 │
-    │ / /_/ / /_/ / __ \\/ / / / __/ _ \\/ ___/                 │
-    │ \\__, / _, _/ /_/ / /_/ / /_/  __/ /                     │
-    │/____/_/ |_|\\____/\\__,_/\\__/\\___/_/                      │
-    │                                                         │
-    │   ×  A N T I G R A V I T Y   C O N N E C T O R         │
-    │                                                         │
-    │   Batch OAuth Linker for 9Router                        │
-    │   Engine: DrissionPage (CDP)                            │
-    └─────────────────────────────────────────────────────────┘{C.RESET}
-    """
-    print(art)
+    print(f"\n  {C.CYAN}{C.BOLD}9Router Antigravity Bot{C.RESET}")
+    print(f"  {C.DIM}Batch OAuth linker | DrissionPage CDP{C.RESET}\n")
 
 
 def table_header():
     print(f"\n  {C.BOLD}{C.WHITE}{'#':>4}  {'Email':<42} {'Status':<10} {'Time':>6}{C.RESET}")
-    print(f"  {C.DIM}{'─'*4}  {'─'*42} {'─'*10} {'─'*6}{C.RESET}")
+    print(f"  {C.DIM}{''*4}  {''*42} {''*10} {''*6}{C.RESET}")
 
 
 def table_row(idx, total, email, status, elapsed):
@@ -149,22 +134,22 @@ def progress_bar(current, total, width=40):
 def summary_box(total, ok, fail, elapsed_total):
     ok_rate = (ok / total * 100) if total else 0
     print(f"""
-  {C.BOLD}{C.CYAN}┌──────────────────────────────────────┐{C.RESET}
+  {C.BOLD}{C.CYAN}┌┐{C.RESET}
   {C.BOLD}{C.CYAN}│{C.RESET}  {C.BOLD}SESSION COMPLETE{C.RESET}                     {C.BOLD}{C.CYAN}│{C.RESET}
-  {C.BOLD}{C.CYAN}├──────────────────────────────────────┤{C.RESET}
+  {C.BOLD}{C.CYAN}├┤{C.RESET}
   {C.BOLD}{C.CYAN}│{C.RESET}  Total      {C.BOLD}{total:>6}{C.RESET}    accounts          {C.BOLD}{C.CYAN}│{C.RESET}
   {C.BOLD}{C.CYAN}│{C.RESET}  {C.GREEN}Success    {C.BOLD}{ok:>6}{C.RESET}    {C.GREEN}({ok_rate:.0f}%){C.RESET}              {C.BOLD}{C.CYAN}│{C.RESET}
   {C.BOLD}{C.CYAN}│{C.RESET}  {C.RED}Failed     {C.BOLD}{fail:>6}{C.RESET}                     {C.BOLD}{C.CYAN}│{C.RESET}
   {C.BOLD}{C.CYAN}│{C.RESET}  Duration   {C.BOLD}{elapsed_total:>5.0f}s{C.RESET}                   {C.BOLD}{C.CYAN}│{C.RESET}
   {C.BOLD}{C.CYAN}│{C.RESET}  Avg/acct   {C.BOLD}{elapsed_total/total if total else 0:>5.1f}s{C.RESET}                   {C.BOLD}{C.CYAN}│{C.RESET}
-  {C.BOLD}{C.CYAN}└──────────────────────────────────────┘{C.RESET}
+  {C.BOLD}{C.CYAN}└┘{C.RESET}
 """)
 
 
-# ── Account file I/O ────────────────────────────────────────
+# Account file I/O
 def load_accounts(filepath):
     if not os.path.exists(filepath):
-        print(f"  {C.RED}✗  File not found: {filepath}{C.RESET}")
+        print(f"  {C.RED}[ERROR] File not found: {filepath}{C.RESET}")
         return []
     with open(filepath, "r", encoding="utf-8") as f:
         lines = [l.strip() for l in f if l.strip()]
@@ -188,7 +173,7 @@ def drop_account(filepath, raw_line):
         f.writelines(l for l in lines if l.strip() != raw_line)
 
 
-# ── Browser interaction primitives ──────────────────────────
+# Browser interaction primitives
 def click_first(target, locators, timeout=5):
     for loc in locators:
         try:
@@ -260,7 +245,7 @@ def type_into(target, locator, text, timeout=15):
     raise RuntimeError(f"All input strategies failed for: {locator}")
 
 
-# ── Core: process one account ────────────────────────────────
+# Core: process one account
 def process_account(acct, idx, total, headless=False, tp=None):
     """
     OAuth-link a single Google account to 9Router Antigravity.
@@ -285,11 +270,11 @@ def process_account(acct, idx, total, headless=False, tp=None):
     browser = ChromiumPage(opts)
 
     try:
-        # Step 1 — Navigate to provider page
+        # Step 1: Navigate to provider page
         browser.get(ROUTER_URL)
         time.sleep(tp["page_load"])
 
-        # Step 2 — Click "Add"
+        # Step 2: Click "Add"
         if not click_first(browser, [
             "tag:button@@text():Add Connection",
             "tag:button@@text():Add",
@@ -303,7 +288,7 @@ def process_account(acct, idx, total, headless=False, tp=None):
                 return False, "Add button not found"
         time.sleep(tp["after_add"])
 
-        # Step 3 — Confirm modal
+        # Step 3: Confirm modal
         pre_tabs = set(browser.tab_ids)
 
         if not click_first(browser, [
@@ -320,7 +305,7 @@ def process_account(acct, idx, total, headless=False, tp=None):
                 "if(b){b.click();return true}return false"
             )
 
-        # Step 4 — Wait for Google tab
+        # Step 4: Wait for Google tab
         new_tab_id = None
         for _ in range(3):
             time.sleep(0.5)
@@ -348,7 +333,7 @@ def process_account(acct, idx, total, headless=False, tp=None):
         tab = browser.get_tab(new_tab_id)
         time.sleep(tp["google_load"])
 
-        # Step 5 — Google login
+        # Step 5: Google login
         type_into(tab, "#identifierId", email, timeout=15)
         time.sleep(tp["after_email"])
 
@@ -380,7 +365,7 @@ def process_account(acct, idx, total, headless=False, tp=None):
             return False, "Password Next button not found"
         time.sleep(tp["after_pw_next"])
 
-        # Step 6 — Handle Google consent flow
+        # Step 6: Handle Google consent flow
         for step in range(10):
             time.sleep(tp["step_wait"])
 
@@ -446,7 +431,7 @@ def process_account(acct, idx, total, headless=False, tp=None):
                 time.sleep(tp["no_btn_wait"])
                 continue
 
-        # Step 7 — Verify completion
+        # Step 7: Verify completion
         time.sleep(tp["redirect_wait"])
         try:
             if new_tab_id in browser.tab_ids:
@@ -474,10 +459,10 @@ def process_account(acct, idx, total, headless=False, tp=None):
             pass
 
 
-# ── Entrypoint ───────────────────────────────────────────────
+# Entrypoint
 def main():
     parser = argparse.ArgumentParser(
-        description="9Router × Antigravity — Batch OAuth Connector",
+        description="9Router Antigravity Bot",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--headless", action="store_true", help="Run browser in background")
@@ -501,7 +486,7 @@ def main():
 
     accounts = load_accounts(acct_file)
     if not accounts:
-        print(f"  {C.YELLOW}⚠  No accounts to process.{C.RESET}")
+        print(f"  {C.YELLOW}[WARN] No accounts to process.{C.RESET}")
         print(f"  {C.DIM}   Create {acct_file} with format: email|password{C.RESET}\n")
         sys.exit(1)
 
@@ -543,9 +528,9 @@ def main():
 
     if errors_log:
         print(f"  {C.RED}{C.BOLD}Failed accounts:{C.RESET}")
-        print(f"  {C.DIM}{'─'*55}{C.RESET}")
+        print(f"  {C.DIM}{''*55}{C.RESET}")
         for email, err in errors_log:
-            print(f"  {C.RED}✗{C.RESET}  {email}")
+            print(f"  {C.RED}x{C.RESET}  {email}")
             print(f"     {C.DIM}{err}{C.RESET}")
         print()
 
