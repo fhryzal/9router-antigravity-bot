@@ -1,0 +1,24 @@
+@echo off
+REM Quick setup for Windows
+echo ═══════════════════════════════════════════
+echo   9Router x Antigravity — Setup
+echo ═══════════════════════════════════════════
+echo.
+
+where python >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo X Python not found. Install from python.org
+    pause
+    exit /b 1
+)
+
+echo Installing DrissionPage...
+pip install DrissionPage
+
+echo.
+echo Setup complete!
+echo.
+echo   1. Create accounts.txt:  email^|password
+echo   2. Run:  python bot.py
+echo.
+pause
