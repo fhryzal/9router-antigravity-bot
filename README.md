@@ -32,7 +32,7 @@ DrissionPage is installed automatically — no manual setup needed.
 ## Setup
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/9router-antigravity-bot.git
+git clone https://github.com/fhryzal/9router-antigravity-bot.git
 cd 9router-antigravity-bot
 ```
 
