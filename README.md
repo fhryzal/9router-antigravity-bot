@@ -1,305 +1,119 @@
-<div align="center">
+# 9Router Antigravity Bot
 
-<br>
+Automates adding Google accounts to 9Router's Antigravity provider. Handles the full OAuth flow — login, Workspace TOS, consent — so you don't have to click through it manually for every account.
 
-```
- ██████╗ ██████╗  ██████╗ ██╗   ██╗████████╗███████╗██████╗
-██╔═══██╗██╔══██╗██╔═══██╗██║   ██║╚══██╔══╝██╔════╝██╔══██╗
-╚██████╔╝██████╔╝██║   ██║██║   ██║   ██║   █████╗  ██████╔╝
- ╚═══██║ ██╔══██╗██║   ██║██║   ██║   ██║   ██╔══╝  ██╔══██╗
- ██████║ ██║  ██║╚██████╔╝╚██████╔╝   ██║   ███████╗██║  ██║
- ╚═════╝ ╚═╝  ╚═╝ ╚═════╝  ╚═════╝    ╚═╝   ╚══════╝╚═╝  ╚═╝
-```
+Uses [DrissionPage](https://github.com/g1879/DrissionPage) (CDP-based, no WebDriver) to control Chrome directly, which avoids the usual automation detection.
 
-**Batch OAuth Connector for [9Router](https://github.com/nicepkg/9router) × Antigravity**
+## Requirements
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
-[![DrissionPage](https://img.shields.io/badge/engine-DrissionPage_CDP-1a1a2e?style=flat-square)](https://github.com/g1879/DrissionPage)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macos%20%7C%20windows-lightgrey?style=flat-square)]()
+- Python 3.8+
+- Google Chrome or Chromium
+- 9Router running at `http://localhost:20128/`
 
-*Zero WebDriver footprint. Multi-strategy input. Fully automated Google OAuth flow.*
+DrissionPage installs automatically on first run.
 
-<br>
-
-</div>
-
----
-
-## Why This Exists
-
-Manually linking Google accounts to 9Router's Antigravity provider means clicking through the same OAuth flow over and over — open the dashboard, click Add, confirm the modal, log into Google, accept consent. For 5 accounts that's annoying. For 100+ it's not feasible.
-
-This bot automates the entire flow end-to-end, one account at a time, with a fresh browser profile each run so sessions never leak between accounts.
-
----
-
-## How It Works
-
-```
-┌─────────────┐     ┌───────────────┐     ┌──────────────────┐     ┌────────────┐
-│  Read next   │────▶│  Open 9Router │────▶│  Click Add +     │────▶│  Google    │
-│  account     │     │  Antigravity  │     │  Confirm modal   │     │  OAuth tab │
-└─────────────┘     └───────────────┘     └──────────────────┘     └─────┬──────┘
-                                                                         │
-                    ┌───────────────┐     ┌──────────────────┐           │
-                    │  Remove from  │◀────│  Handle consent  │◀──────────┘
-                    │  accounts.txt │     │  I Understand →  │
-                    │  on success   │     │  Allow → Done    │
-                    └───────────────┘     └──────────────────┘
-```
-
-Each account goes through all 7 steps automatically. Failed accounts are skipped and reported — they don't block the queue.
-
----
-
-## Quick Start
+## Setup
 
 ```bash
 git clone https://github.com/fhryzal/9router-antigravity-bot.git
 cd 9router-antigravity-bot
 ```
 
-Create `accounts.txt`:
+Create `accounts.txt` with one account per line:
 
 ```
-user1@example.com|password123
-user2@example.com|password456
-user3@example.com|password789
+email@example.com|password
+another@example.com|password
 ```
-
-Run:
-
-```bash
-python3 bot.py
-```
-
-> DrissionPage installs automatically on first run. No manual setup needed.
-
----
 
 ## Usage
 
 ```bash
-# Standard mode (recommended)
-python3 bot.py
-
-# Fast mode — shorter delays for fast connections
-python3 bot.py --fast
-
-# Custom delay between accounts (seconds)
-python3 bot.py --delay 10
-
-# Use a different accounts file
-python3 bot.py --file /path/to/my-accounts.txt
-
-# Combined
-python3 bot.py --fast --delay 5 --file accounts.txt
+python3 bot.py                          # standard mode
+python3 bot.py --fast                   # shorter delays for fast connections
+python3 bot.py --delay 10               # 10s between accounts
+python3 bot.py --file other-list.txt    # custom accounts file
 ```
 
-### Options
+| Flag | Default | What it does |
+|:-----|:--------|:-------------|
+| `--fast` | off | Less wait time between steps |
+| `--delay N` | `3` | Seconds between accounts |
+| `--file PATH` | `accounts.txt` | Path to accounts file |
+| `--headless` | off | Background mode (experimental) |
 
-| Flag | Default | Description |
-|:-----|:--------|:------------|
-| `--fast` | off | Reduced delays for low-latency connections |
-| `--delay N` | `3` | Wait time between accounts in seconds |
-| `--file PATH` | `accounts.txt` | Path to the accounts file |
-| `--headless` | off | Run browser in background *(experimental)* |
+## What it does
 
----
+For each account:
+
+1. Opens Chrome with a fresh temp profile
+2. Goes to `localhost:20128` → Antigravity → clicks Add
+3. Confirms the risk modal
+4. Waits for Google login tab
+5. Enters email/password
+6. Handles "Welcome to your new account" (Workspace TOS) if it shows up
+7. Clicks Allow on OAuth consent
+8. Verifies redirect back to 9Router
+9. Removes the account from `accounts.txt` on success
+10. Closes browser, cleans up temp data, moves to next
+
+Failed accounts are skipped and reported at the end — they don't block the rest.
 
 ## Output
-
-The bot prints a live table with colored status badges and a summary box at the end:
 
 ```
    #  Email                                      Status       Time
   ──  ──────────────────────────────────────────  ──────────  ──────
-   1  edwards1761@example.com                        OK       18.2s
-   2  kaylynn148@example.com                         OK       21.5s
-   3  jerimiah93@example.com                         OK       19.7s
-   4  gavin69692@example.com                        FAIL      34.1s
-   5  leona84334@example.com                         OK       20.3s
-
-  [████████████████████████████████████░░░░░] 5/5 (100%)
+   1  user1@example.com                              OK       18.2s
+   2  user2@example.com                              OK       21.5s
+   3  user3@example.com                             FAIL      34.1s
 
   ┌──────────────────────────────────────┐
   │  SESSION COMPLETE                    │
   ├──────────────────────────────────────┤
-  │  Total           5    accounts       │
-  │  Success         4    (80%)          │
+  │  Total           3    accounts       │
+  │  Success         2    (67%)          │
   │  Failed          1                   │
-  │  Duration      119s                  │
-  │  Avg/acct     23.8s                  │
+  │  Duration       79s                  │
   └──────────────────────────────────────┘
-
-  Failed accounts:
-  ──────────────────────────────────────────────────
-  ✗  gavin69692@example.com
-     Google CAPTCHA triggered — try increasing delay
 ```
 
-Successfully linked accounts are automatically removed from `accounts.txt`.
+## Notes
 
----
+**Input strategies** — typing into Google's login fields uses 4 fallback methods (native → JS → CDP keyboard → raw JS). If one doesn't work on a particular page state, it tries the next.
 
-## Under the Hood
+**Fresh profiles** — every account gets its own temp browser profile, deleted after use. No session leakage between accounts.
 
-### Anti-Detection
+**Google consent handling** — the bot loops through up to 10 consent steps per account, matching buttons by text (`I understand`, `Continue`, `Allow`, etc.) and falling back to JS scanning if the normal selectors miss.
 
-DrissionPage communicates with Chrome via the **Chrome DevTools Protocol** directly — no WebDriver binary, no Selenium, no `navigator.webdriver` flag. This makes it significantly harder for Google to detect automation compared to traditional Selenium or Puppeteer setups.
+## Platform notes
 
-### Multi-Strategy Input
-
-Typing into fields uses **4 fallback strategies** to ensure reliability across different page states:
-
-1. **Native `.input()`** — standard DrissionPage method
-2. **JS-backed `.input(by_js=True)`** — JavaScript-driven clear + type
-3. **CDP keyboard** — `Ctrl+A → Backspace → type` via Chrome DevTools
-4. **Raw JS injection** — direct `value` assignment + event dispatch
-
-If strategy 1 fails (value doesn't match), it falls through to 2, then 3, then 4.
-
-### Fresh Profiles
-
-Each account gets a **new temporary browser profile** created in the system temp directory. After the account is processed (success or failure), the profile is deleted. This prevents:
-
-- Cookie/session leakage between accounts
-- Google detecting multiple logins from the same browser profile
-- Stale cache causing unexpected behavior
-
-### Google Consent Flow
-
-The bot handles the full Google OAuth consent chain:
-
-| Page | URL Pattern | Action |
-|:-----|:-----------|:-------|
-| Workspace TOS | `workspacetermsofservice` | Click "I understand" |
-| OAuth consent | `signin/oauth` | Click "Continue" / "Allow" |
-| Checkbox consent | any | Check unchecked boxes |
-| Generic fallback | any Google page | JS scan for consent-like buttons |
-
-Up to 10 consent steps are handled per account before giving up.
-
----
-
-## Requirements
-
-| Requirement | Details |
-|:------------|:--------|
-| **Python** | 3.8 or higher |
-| **Browser** | Google Chrome or Chromium |
-| **9Router** | Running at `http://localhost:20128/` |
-| **DrissionPage** | Auto-installed on first run |
-
-### Platform Setup
-
-<details>
-<summary><strong>Linux</strong></summary>
-
-```bash
-chmod +x setup.sh && ./setup.sh
-```
-
-Or manually:
-```bash
-sudo apt install chromium-browser    # if Chrome not installed
-pip3 install DrissionPage
-```
-
-For headless servers, install Xvfb:
+**Linux (headless server):**
 ```bash
 sudo apt install xvfb
 xvfb-run python3 bot.py
 ```
 
-</details>
-
-<details>
-<summary><strong>macOS</strong></summary>
-
+**macOS:**
 ```bash
-brew install --cask google-chrome    # if not installed
 pip3 install DrissionPage
 python3 bot.py
 ```
 
-</details>
-
-<details>
-<summary><strong>Windows</strong></summary>
-
-```cmd
-setup.bat
-```
-
-Or manually: install Chrome from [google.com/chrome](https://www.google.com/chrome/), then:
+**Windows:**
 ```cmd
 pip install DrissionPage
 python bot.py
 ```
 
-</details>
-
----
-
 ## Troubleshooting
 
-<details>
-<summary><strong>Google asks for CAPTCHA</strong></summary>
+**Google CAPTCHA** — increase delay (`--delay 10`), don't use `--headless`, don't run too many accounts back-to-back. Accounts with 2FA won't work.
 
-- Increase delay: `--delay 10` or `--delay 15`
-- Don't use `--headless` — visible browser triggers fewer CAPTCHAs
-- Avoid running too many accounts back-to-back
-- Make sure accounts don't have 2FA enabled
+**Tab doesn't open** — make sure 9Router is actually running and the URL loads in a regular browser.
 
-</details>
-
-<details>
-<summary><strong>Tab Google doesn't open</strong></summary>
-
-- Make sure 9Router is running at `http://localhost:20128/`
-- Open the URL manually in a browser to verify
-- Check if popups are being blocked
-- Try without `--headless`
-
-</details>
-
-<details>
-<summary><strong>Timeout / slow connection</strong></summary>
-
-- Use default mode (don't pass `--fast`)
-- Increase delay: `--delay 10`
-- Check your internet connection
-
-</details>
-
-<details>
-<summary><strong>DrissionPage not installed</strong></summary>
-
-It auto-installs on first run. If that fails:
-```bash
-pip3 install DrissionPage
-```
-
-On managed Python environments (Ubuntu 24.04+):
-```bash
-pip3 install --break-system-packages DrissionPage
-```
-
-</details>
-
----
-
-## Security
-
-- `accounts.txt` is in `.gitignore` — it will never be committed accidentally
-- Each browser session uses an **isolated temp profile** that is deleted after use
-- No credentials are logged, stored, or transmitted anywhere except to Google's login page
-- The bot runs entirely locally — no external servers or APIs involved
-
----
+**DrissionPage install fails** — try `pip3 install --break-system-packages DrissionPage` on Ubuntu 24.04+.
 
 ## License
 
-MIT — do whatever you want with it.
+MIT
